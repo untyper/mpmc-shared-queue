@@ -1,5 +1,5 @@
 # mpmc-shared-queue
-Shared queue that works in shared memory, for C++
+Queue that works in shared memory, for C++
 
 ## Details
 - Thrad-safe
