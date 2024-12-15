@@ -7,61 +7,58 @@ Lock-free (Multi-Producer, Multi-Consumer) queue that works in shared memory, fo
 ```c++
 #include "shared_queue.h"
 
+#include <windows.h>
 #include <iostream>
-#include <Windows.h>
 
 int main()
 {
-  constexpr size_t SHARED_MEMORY_SIZE = 1024 * 1024; // 1 MB
+  const size_t shared_memory_size = 1024; // 1 KB shared memory
+  const char* shared_memory_name = "SharedQueueMemory";
 
   // Create shared memory
-  HANDLE map_file = CreateFileMappingA(
-    INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, SHARED_MEMORY_SIZE, "SharedQueueWindowsExample");
-
-  if (!map_file)
+  HANDLE hMapFile = CreateFileMappingA(
+    INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, shared_memory_size, shared_memory_name);
+  if (!hMapFile)
   {
     std::cerr << "Failed to create shared memory: " << GetLastError() << std::endl;
     return 1;
   }
 
-  void* shared_memory = MapViewOfFile(map_file, FILE_MAP_ALL_ACCESS, 0, 0, SHARED_MEMORY_SIZE);
+  void* shared_memory = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, shared_memory_size);
 
   if (!shared_memory)
   {
     std::cerr << "Failed to map shared memory: " << GetLastError() << std::endl;
-    CloseHandle(map_file);
+    CloseHandle(hMapFile);
     return 1;
   }
 
-  // Create or get the shared queue depending on if it already exists or not
-  sq::Shared_Queue<int> shared_queue(shared_memory, SHARED_MEMORY_SIZE);
+  // Initialize the shared queue
+  sq::Shared_Queue<int> queue(shared_memory, shared_memory_size, 10);
 
-  if (!shared_queue.is_created())
-  {
-    std::cerr << "Failed to create or get shared queue" << std::endl;
-    UnmapViewOfFile(shared_memory);
-    CloseHandle(map_file);
-    return 1;
-  }
+  // Producer loop
+  int count = 0;
 
-  // Producer code
-  for (int i = 1; i <= 10; ++i)
+  while (true)
   {
-    while (!shared_queue.enqueue(i, i % 2 == 0)) // Mark even numbers as important
+    bool important = (count % 5 == 0); // Mark every 5th item as important
+
+    if (queue.enqueue(count, important))
     {
-      Sleep(1); // Wait if enqueue fails
+      std::cout << "[Producer] Enqueued: " << count << (important ? " (Important)" : "") << std::endl;
+    }
+    else
+    {
+      std::cerr << "[Producer] Queue is full.\n";
     }
 
-    std::cout << "Producer enqueued: " << i << (i % 2 == 0 ? " (Important)" : "") << std::endl;
+    count++;
+    Sleep(500); // Sleep for 500ms
   }
 
-  // Keep the process alive to allow the second process to access the queue
-  std::cout << "Press Enter to exit...";
-  std::cin.get();
-
-  // Clean up
+  // Cleanup
   UnmapViewOfFile(shared_memory);
-  CloseHandle(map_file);
+  CloseHandle(hMapFile);
 
   return 0;
 }
@@ -71,72 +68,56 @@ int main()
 ```c++
 #include "shared_queue.h"
 
+#include <windows.h>
 #include <iostream>
-#include <Windows.h>
 
 int main()
 {
-  constexpr size_t SHARED_MEMORY_SIZE = 1024 * 1024; // 1 MB
+  const size_t shared_memory_size = 1024; // 1 KB shared memory
+  const char* shared_memory_name = "SharedQueueMemory";
 
-  // Open existing shared memory
-  HANDLE map_file = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, "SharedQueueWindowsExample");
+  // Open shared memory
+  HANDLE hMapFile = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, shared_memory_name);
 
-  if (!map_file)
+  if (!hMapFile)
   {
     std::cerr << "Failed to open shared memory: " << GetLastError() << std::endl;
     return 1;
   }
 
-  void* shared_memory = MapViewOfFile(map_file, FILE_MAP_ALL_ACCESS, 0, 0, SHARED_MEMORY_SIZE);
+  void* shared_memory = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, shared_memory_size);
+
   if (!shared_memory)
   {
     std::cerr << "Failed to map shared memory: " << GetLastError() << std::endl;
-    CloseHandle(map_file);
+    CloseHandle(hMapFile);
     return 1;
   }
 
-  // Create or get the shared queue depending on if it already exists or not
-  sq::Shared_Queue<int> shared_queue(shared_memory, SHARED_MEMORY_SIZE);
+  // Attach to the shared queue
+  sq::Shared_Queue<int> queue(shared_memory, shared_memory_size);
 
-  if (!shared_queue.is_created())
-  {
-    std::cerr << "Failed to create or get shared queue" << std::endl;
-    UnmapViewOfFile(shared_memory);
-    CloseHandle(map_file);
-    return 1;
-  }
-
-  // Consumer code
-  int value;
-  bool important;
-
+  // Consumer loop
   while (true)
   {
-    if (shared_queue.dequeue(&value, &important))
-    {
-      std::cout << "Consumer dequeued: " << value;
+    int value;
+    bool important;
 
-      if (important)
-      {
-        std::cout << " (Important)";
-      }
-
-      std::cout << std::endl;
-    }
-    else if (shared_queue.is_empty())
+    if (queue.dequeue(&value, &important))
     {
-      // Exit when the queue is empty
-      break;
+      std::cout << "[Consumer] Dequeued: " << value << (important ? " (Important)" : "") << std::endl;
     }
     else
     {
-      Sleep(1); // Wait if dequeue fails
+      std::cerr << "[Consumer] Queue is empty.\n";
     }
+
+    Sleep(1000); // Sleep for 1 second
   }
 
-  // Clean up
+  // Cleanup
   UnmapViewOfFile(shared_memory);
-  CloseHandle(map_file);
+  CloseHandle(hMapFile);
 
   return 0;
 }
