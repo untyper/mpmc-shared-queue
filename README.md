@@ -1,5 +1,11 @@
 # mpmc-shared-queue
-Lock-free (Multi-Producer, Multi-Consumer) queue that works in shared memory, for C++
+Shared queue that works in shared memory, for C++
+
+## Details
+- Thrad-safe
+- Lock-free
+- Multi-Producer and Multi-Consumer
+- Works in shared memory
 
 ## Usage examples (Windows)
 
