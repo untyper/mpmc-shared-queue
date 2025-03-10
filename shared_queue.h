@@ -167,7 +167,7 @@ namespace sq
     }
 
     // Default constructor
-    Shared_Queue() {}
+    Shared_Queue() = default;
   };
 } // namespace sq
 
