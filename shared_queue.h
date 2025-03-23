@@ -54,7 +54,7 @@ namespace sq
       return (this->control_block->count.load(std::memory_order_acquire) == 0);
     }
 
-    // Approximate size of the buffer
+    // Count of items in the buffer
     std::size_t size() const
     {
       return this->control_block->count.load(std::memory_order_acquire);
@@ -184,7 +184,6 @@ namespace sq
       return true;
     }
 
-    // Removed std::size_t shared_memory_size from the constructor signature for the same reason
     explicit Shared_Queue(void* shared_memory)
     {
       // Now we just call create without the size
