@@ -28,10 +28,10 @@ namespace sq
 
     struct Shared_Control_Block
     {
-      std::atomic<std::size_t> head; // Consumer position
-      std::atomic<std::size_t> tail; // Producer position
-      std::atomic<std::size_t> count{ 0 };
-      std::size_t capacity{ 0 };     // Capacity of the buffer
+      std::atomic<std::size_t> head;       // Consumer position
+      std::atomic<std::size_t> tail;       // Producer position
+      std::atomic<std::size_t> count{ 0 }; // Item counter
+      std::size_t capacity{ 0 };           // Capacity of the buffer
     };
 
     Shared_Control_Block* control_block{ nullptr }; // Shared control block
